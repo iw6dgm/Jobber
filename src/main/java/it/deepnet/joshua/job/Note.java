@@ -72,7 +72,6 @@ public class Note extends JFrame {
             loadNote(user_event_id);
             note.setText(notes);
         } catch (Exception e3) {
-            // TODO Auto-generated catch block
             Job.logger.log(Level.SEVERE, "{Note}", e3);
         }
 
@@ -115,10 +114,4 @@ public class Note extends JFrame {
         note.setText(notes);
 
     }
-
-//	public static void main(final String[] args) {
-//		
-//		Console.run(new Note(), 425, 475);
-//	}
-
 }
