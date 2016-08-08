@@ -8,8 +8,11 @@ Yes, because my former company wanted to know how many minutes, hours and days w
 Bug fixings, enhancements and projects were differently cost-timed, and my former, greedy company needed to know how much to get paid from its (only) customer (poor guys...) for my (precious!) work.
 
 How can I remember minutes or days spent on dozens of freaking tasks called *ME-xyz* (yep, *ME* stands for *Minor Enhancement* and *xyz* is just an incremental number) or on those boring bug fixes called *INC-xyz* (yeah, *INC* stands for *Incident* and *xyz*... you already know that) completed days, weeks (or months) ago?
+
 How can I even sum up all those different tasks within the proper project they belong to? (The *wrong* answer is *Excel*)
+
 "Hey, hold on! You know what? We got something called *Intranet*... why don't you use that?". Yeah, there was *some* sort of Intranet portal, developed in a buggy JetShait-something. You might use it, but the *click-here-and-there-and-pray* plus "*remember* to do it every now and then or you will eventually forget your timings" strategy didn't work out very well.
+
 Why not having some "start" and "stop" button, two simple, easy peasy clicks and something else will deal with the rest on my behalf?
 
 This is where Jobber came into action: a small piece of software that did the dirty job for me.
