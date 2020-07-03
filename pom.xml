@@ -19,7 +19,7 @@
         <dependency>
             <groupId>mysql</groupId>
             <artifactId>mysql-connector-java</artifactId>
-            <version>5.1.39</version>
+            <version>[8.0.16,)</version>
         </dependency>
     </dependencies>
 
@@ -44,7 +44,7 @@
                     <archive>
                         <manifest>
                             <addClasspath>true</addClasspath>
-                            <mainClass>it.joshua.crobots.Crobots</mainClass>
+                            <mainClass>it.deepnet.joshua.job.Job</mainClass>
                         </manifest>
                     </archive>
                 </configuration>
