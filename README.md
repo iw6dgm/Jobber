@@ -26,7 +26,7 @@ Features
 - Optionally HTTP-driven: connects to some external web application and, using some obscure API, stores stuff as described before
 - Web configuration: projects, tasks, users and project-user associations are configured via web application
 - Small, light-weight, easy-to-use GUI
-- Keeps track of timings even if not running: just open it to click "start" or "stop" (and switch the task) when you need to
+- Keeps track of the ticking time even if not running: just open it to click "start" or "stop" (and switch the task) when you need to
 
 TODO List, Code review and Known Issues
 ---------------------------------------
