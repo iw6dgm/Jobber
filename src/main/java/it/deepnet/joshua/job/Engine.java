@@ -3,6 +3,7 @@ package it.deepnet.joshua.job;
 import java.io.IOException;
 import java.sql.CallableStatement;
 import java.sql.Connection;
+import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
@@ -23,7 +24,7 @@ public class Engine {
 
     public Engine() {
 
-        setServer(MySQL.server);
+        setServer(Database.server);
 
     }
 
@@ -31,23 +32,19 @@ public class Engine {
 
         boolean logged = false;
         ResultSet rs = null;
-        CallableStatement cs = null;
 
+        try (Connection connection = Database.open()) {
 
-        try (Connection connection = MySQL.open()) {
+            try (PreparedStatement ps = connection.prepareStatement("SELECT 1 FROM login WHERE user=? AND password=?")){
 
-            try {
+                ps.setString(1, user);
+                ps.setString(2, password);
 
-                cs = connection.prepareCall("{CALL login(?, ?)}");
-                cs.setString(1, user);
-                cs.setString(2, password);
-
-                rs = cs.executeQuery();
+                rs = ps.executeQuery();
                 logged = rs.next();
 
             } finally {
                 if (rs != null) rs.close();
-                if (cs != null) cs.close();
             }
 
         } catch (SQLException | IOException e) {
@@ -59,36 +56,28 @@ public class Engine {
 
     public List<Project> getProjects(String user) {
 
-        CallableStatement cs = null;
         ResultSet rs = null;
         ArrayList<Project> prj = null;
-        Connection c = null;
-        try {
 
-            c = MySQL.open();
+        try (final Connection c = Database.open()){
+            try (final PreparedStatement ps = c.prepareStatement("SELECT p.id, p.description FROM project p JOIN user_project up ON (p.id=up.project_id) WHERE up.user_id=?")) {
 
-            try {
 
-                cs = c.prepareCall("{CALL getProjects(?)}");
+                ps.setString(1, user);
+                rs = ps.executeQuery();
 
-                cs.setString(1, user);
-                rs = cs.executeQuery();
-
-                prj = new ArrayList<Project>();
+                prj = new ArrayList<>();
 
                 while (rs.next()) {
-                    prj.add(new Project(rs.getInt(1), rs.getString(2)));
+                    prj.add(new Project(rs.getString(1), rs.getString(2)));
                 }
 
             } finally {
                 if (rs != null) rs.close();
-                if (cs != null) cs.close();
             }
 
         } catch (Exception e) {
             Job.logger.log(Level.SEVERE, "{Engine}", e);
-        } finally {
-            if (c != null) MySQL.close(c);
         }
 
         return prj;
@@ -104,7 +93,7 @@ public class Engine {
 
         try {
 
-            c = MySQL.open();
+            c = Database.open();
 
             try {
 
@@ -115,7 +104,7 @@ public class Engine {
                 if (rs.next()) {
 
                     status.setStatus(rs.getInt(1));
-                    status.setProject_id(rs.getInt(2));
+                    status.setProject_id(rs.getString(2));
                     status.setEvent_id(rs.getInt(3));
 
                 }
@@ -127,7 +116,7 @@ public class Engine {
         } catch (Exception e) {
             Job.logger.log(Level.SEVERE, "{Engine}", e);
         } finally {
-            if (c != null) MySQL.close(c);
+            if (c != null) Database.close(c);
         }
 
         return status;
@@ -141,7 +130,7 @@ public class Engine {
         ResultSet rs = null;
         try {
 
-            c = MySQL.open();
+            c = Database.open();
 
             try {
 
@@ -162,7 +151,7 @@ public class Engine {
         } catch (Exception e) {
             Job.logger.log(Level.SEVERE, "{Engine}", e);
         } finally {
-            if (c != null) MySQL.close(c);
+            if (c != null) Database.close(c);
         }
 
         return note;
@@ -175,7 +164,7 @@ public class Engine {
         Connection c = null;
         try {
 
-            c = MySQL.open();
+            c = Database.open();
 
             try {
                 cs = c.prepareCall("{CALL updateNote(?, ?)}");
@@ -191,11 +180,11 @@ public class Engine {
         } catch (Exception e2) {
             Job.logger.log(Level.SEVERE, "{Engine}", e2);
         } finally {
-            if (c != null) MySQL.close(c);
+            if (c != null) Database.close(c);
         }
     }
 
-    public int startProject(String user_id, int project_id) {
+    public int startProject(String user_id, String project_id) {
 
         int event_id = 0;
         ResultSet rs = null;
@@ -207,13 +196,13 @@ public class Engine {
 
         try {
 
-            c = MySQL.open();
+            c = Database.open();
 
             try {
 
                 cs = c.prepareCall("{CALL startProject(?, ?)}");
                 cs.setString(1, user_id);
-                cs.setInt(2, project_id);
+                cs.setString(2, project_id);
 
                 rs = cs.executeQuery();
 
@@ -229,7 +218,7 @@ public class Engine {
         } catch (Exception e2) {
             Job.logger.log(Level.SEVERE, "{Engine}", e2);
         } finally {
-            if (c != null) MySQL.close(c);
+            if (c != null) Database.close(c);
         }
 
         return event_id;
@@ -243,7 +232,7 @@ public class Engine {
 
         try {
 
-            c = MySQL.open();
+            c = Database.open();
 
             try {
 
@@ -260,7 +249,7 @@ public class Engine {
         } catch (Exception e2) {
             Job.logger.log(Level.SEVERE, "{Engine}", e2);
         } finally {
-            if (c != null) MySQL.close(c);
+            if (c != null) Database.close(c);
         }
 
     }

@@ -19,7 +19,7 @@ public class Job extends JFrame {
 
     static public final Logger logger = Logger.getLogger(Job.class.getName());
     private static final long serialVersionUID = 1L;
-    private final String VERSION = "0.85.3 \t(C) Maurizio Camangi";
+    private final String VERSION = "0.9.0 \t(C) Maurizio Camangi";
     Container cp;
     Status usr_status = null;
     Project usr_prj = null;
@@ -27,10 +27,10 @@ public class Job extends JFrame {
     //private static boolean isHTTPConnection = false;
     static Engine engine;
     boolean logged = false;
-    int user_project_id = 1;
+    String user_project_id;
     int user_event_id = 0;
-    static String user_id = "";
-    static String user_pwd = "";
+    static String user_id = "user";
+    static String user_pwd = "tester";
     List<Project> projects;
     JPanel title = new JPanel(),
             row1 = new JPanel(),
@@ -106,39 +106,31 @@ public class Job extends JFrame {
                     jcombo.setEnabled(true);
                 }
             },
-            alogout = new ActionListener() {
-
-                @Override
-                public void actionPerformed(ActionEvent e) {
-                    jbstart.setEnabled(false);
-                    jbstop.setEnabled(false);
-                    jbnote.setEnabled(false);
-                    status.append("Logout " +
-                            user_id + "...\n");
-                    logger.log(Level.FINE, "Logout " +
-                            user_id);
-                    jcombo.setEnabled(false);
-                    username.setEnabled(true);
-                    password.setEnabled(true);
-                    username.setText("");
-                    password.setText("");
-                    jblogin.setEnabled(true);
-                    jbcancel.setEnabled(true);
-                    jblogout.setEnabled(false);
-                    status.append("Connection closed...\n");
-                    logged = false;
-                }
+            alogout = e -> {
+                jbstart.setEnabled(false);
+                jbstop.setEnabled(false);
+                jbnote.setEnabled(false);
+                status.append("Logout " +
+                        user_id + "...\n");
+                logger.log(Level.FINE, "Logout " +
+                        user_id);
+                jcombo.setEnabled(false);
+                username.setEnabled(true);
+                password.setEnabled(true);
+                username.setText("");
+                password.setText("");
+                jblogin.setEnabled(true);
+                jbcancel.setEnabled(true);
+                jblogout.setEnabled(false);
+                status.append("Connection closed...\n");
+                logged = false;
             },
-            anote = new ActionListener() {
-
-                @Override
-                public void actionPerformed(ActionEvent e) {
-                    JFrame frame = new Note(user_event_id);
-                    frame.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
-                    frame.setSize(365, 205);
-                    frame.setVisible(true);
-                    frame.setResizable(false);
-                }
+            anote = e -> {
+                JFrame frame = new Note(user_event_id);
+                frame.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
+                frame.setSize(365, 205);
+                frame.setVisible(true);
+                frame.setResizable(false);
             };
 
     public Job() {
@@ -219,37 +211,20 @@ public class Job extends JFrame {
         Loadxml.init();
 
         if (Loadxml.getValue("server") != null) {
-            MySQL.server = Loadxml.getValue("server").trim();
+            Database.server = Loadxml.getValue("server").trim();
         } else {
-            MySQL.server = "localhost";
+            Database.server = "localhost";
         }
 
-        logger.log(Level.CONFIG, "MySQL server = " + MySQL.server);
-
-        if (Loadxml.getValue("dbuser") != null) {
-            MySQL.user = Loadxml.getValue("dbuser").trim();
-        } else {
-            MySQL.user = "job";
-        }
-
-        logger.log(Level.CONFIG, "MySQL dbuser = " + MySQL.user);
-
-
-        if (Loadxml.getValue("dbpassword") != null) {
-            MySQL.password = Loadxml.getValue("dbpassword");
-        } else {
-            MySQL.password = "";
-        }
-
-        logger.log(Level.CONFIG, "MySQL dbpassword = " + MySQL.password);
+        logger.log(Level.CONFIG, "Database = " + Database.server);
 
         if (Loadxml.getValue("dbname") != null) {
-            MySQL.dbname = Loadxml.getValue("dbname").trim();
+            Database.dbname = Loadxml.getValue("dbname").trim();
         } else {
-            MySQL.dbname = "job";
+            Database.dbname = "jobber.db";
         }
 
-        logger.log(Level.CONFIG, "MySQL dbname = " + MySQL.dbname);
+        logger.log(Level.CONFIG, "Database dbname = " + Database.dbname);
 
         if (Loadxml.getValue("user") != null) {
             user_id = Loadxml.getValue("user").trim();
@@ -278,11 +253,6 @@ public class Job extends JFrame {
         }
 
         logger.log(Level.CONFIG, "HTTP server = " + HTTPEngine.getUrl());
-
-        if ("true".equals(Loadxml.getValue("encrypt"))) {
-            MySQL.encrypt = "true";
-        }
-
         if (http != null && http.equalsIgnoreCase("http")) {
             engine = new HTTPEngine();
         } else {

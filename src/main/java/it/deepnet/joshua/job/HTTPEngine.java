@@ -93,7 +93,7 @@ public class HTTPEngine extends Engine {
                         String project_id = (String) project.nextElement();
                         String project_descr = (String) project.nextElement();
 
-                        prj.add(new Project(Integer.parseInt(project_id), project_descr));
+                        prj.add(new Project(project_id, project_descr));
 
                     }
 
@@ -126,7 +126,7 @@ public class HTTPEngine extends Engine {
                 s.length >= 3) {
             status = new Status();
             status.setStatus(Integer.parseInt(s[0]));
-            status.setProject_id(Integer.parseInt(s[1]));
+            status.setProject_id(s[1]);
             status.setEvent_id(Integer.parseInt(s[2]));
         }
 
@@ -159,7 +159,7 @@ public class HTTPEngine extends Engine {
     }
 
     @Override
-    public int startProject(String user, int project_id) {
+    public int startProject(String user, String project_id) {
 
         int event_id = -1;
 
