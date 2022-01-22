@@ -1,7 +1,7 @@
 The Jobber
 ==========
 
-At the time of writing, The Jobber is almost a 14 years old project born as just as a fun exercise to learn programming in Java, something rather useful with a small, easy-to-use GUI.
+At the time of writing, The Jobber is almost a 16 years old project born as just as a fun exercise to learn programming in Java, something rather useful with a small, easy-to-use GUI.
 Eventually, it turned out that this bunch of crappy code helped me out with doing one of the most utterly annoying task known to human beings: keep track of the time spent in tasks, projects and, eventually, create a report for accounting purposes.
 
 Yes, because my former company wanted to know how many minutes, hours and days were spent on a bug fix, a minor enhancement and, in total, on a project.
@@ -38,7 +38,6 @@ TODO List, Code review and Known Issues
 - HTTP APIs are not RESTFul
 - Some class is really "big" (too many lines of code)
 - At the time of writing, web application (I recall some sort of PHP web app) is missing / lost
-- Database schema incomplete
 - Passwords are not actually encrypted, just base64 encoded
 - Mobile friendly? Are you kidding, right?
 
