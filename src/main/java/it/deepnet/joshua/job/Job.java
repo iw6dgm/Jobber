@@ -48,30 +48,19 @@ public class Job extends JFrame {
             jbnote = new JButton("Note");
     JComboBox jcombo = new JComboBox();
     JTextArea status = new JTextArea(8, 35);
-    ActionListener alogin = new ActionListener() {
-
-        @Override
-        public void actionPerformed(ActionEvent e) {
-            user_id = username.getText();
-            user_pwd = new String(password.getPassword());
-            doLogin();
-        }
+    ActionListener alogin = e -> {
+        user_id = username.getText();
+        user_pwd = new String(password.getPassword());
+        doLogin();
     },
-            acancel = new ActionListener() {
-
-                @Override
-                public void actionPerformed(ActionEvent e) {
-                    username.setText("");
-                    password.setText("");
-                }
+            acancel = e -> {
+                username.setText("");
+                password.setText("");
             },
             astart = new ActionListener() {
 
                 @Override
                 public void actionPerformed(ActionEvent e) {
-                    jbstart.setEnabled(false);
-                    jbstop.setEnabled(true);
-                    jbnote.setEnabled(true);
                     user_project_id = ((Project) jcombo.getSelectedItem()).getKey();
                     user_event_id = engine.startProject(user_id, user_project_id);
 
@@ -83,6 +72,9 @@ public class Job extends JFrame {
                                 jcombo.getSelectedItem().toString() + " with event_id=" +
                                 user_event_id);
                         usr_prj = new Project(user_project_id, jcombo.getSelectedItem().toString());
+                        jbstart.setEnabled(false);
+                        jbstop.setEnabled(true);
+                        jbnote.setEnabled(true);
                         jcombo.setEnabled(false);
                     } else {
                         status.append("WARNING : UNABLE TO START A PROJECT");
@@ -95,15 +87,19 @@ public class Job extends JFrame {
 
                 @Override
                 public void actionPerformed(ActionEvent e) {
-                    jbstart.setEnabled(true);
-                    jbstop.setEnabled(false);
-                    jbnote.setEnabled(false);
-                    status.append("Stopping job name " +
-                            usr_prj.getDescription() + "\n");
-                    logger.log(Level.FINE, "Stopping job name " +
-                            usr_prj.getDescription());
-                    engine.stopProject(user_id);
-                    jcombo.setEnabled(true);
+                    if (engine.stopProject(user_id, usr_prj.getKey())) {
+                        status.append("Stopping job name " +
+                                usr_prj.getDescription() + "\n");
+                        logger.log(Level.FINE, "Stopping job name " +
+                                usr_prj.getDescription());
+                        jbstart.setEnabled(true);
+                        jbstop.setEnabled(false);
+                        jbnote.setEnabled(false);
+                        jcombo.setEnabled(true);
+                    } else {
+                        status.append("WARNING : UNABLE TO STOP A PROJECT");
+                        logger.warning("UNABLE TO STOP A PROJECT");
+                    }
                 }
             },
             alogout = e -> {
@@ -244,22 +240,8 @@ public class Job extends JFrame {
 
         logger.log(Level.CONFIG, "Password = " + user_pwd);
 
-        String http = Loadxml.getValue("connection");
-
-        if (Loadxml.getValue("httpserver") != null) {
-            HTTPEngine.setUrl(Loadxml.getValue("httpserver").trim());
-        } else {
-            HTTPEngine.setUrl("http://localhost");
-        }
-
-        logger.log(Level.CONFIG, "HTTP server = " + HTTPEngine.getUrl());
-        if (http != null && http.equalsIgnoreCase("http")) {
-            engine = new HTTPEngine();
-        } else {
-            engine = new Engine();
-            http = "MySQL";
-        }
-
+        final String http = "MySQL"; // TODO remove
+        engine = new Engine();
         logger.log(Level.CONFIG, "Connection type = " + http);
         logger.log(Level.CONFIG, "Server = " + engine.getServer());
 
@@ -292,7 +274,7 @@ public class Job extends JFrame {
 
                         if (usr_status != null) {
 
-                            if (usr_status.getStatus() == 0) { // User Idle
+                            if (!usr_status.isActive()) { // User Idle
 
                                 jcombo.setEnabled(true);
                                 jcombo.setFocusable(false);

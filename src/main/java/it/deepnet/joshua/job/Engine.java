@@ -6,12 +6,14 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.logging.Level;
 
 
 public class Engine {
+    private static final Status INACTIVE_STATUS = new Status();
     private String server = "";
 
     public void setServer(String s) {
@@ -31,22 +33,17 @@ public class Engine {
     public boolean login(String user, String password) {
 
         boolean logged = false;
-        ResultSet rs = null;
+        try (final Connection connection = Database.open(true)) {
 
-        try (Connection connection = Database.open()) {
-
-            try (PreparedStatement ps = connection.prepareStatement("SELECT 1 FROM login WHERE user=? AND password=?")){
+            try (final PreparedStatement ps = connection.prepareStatement("SELECT 1 FROM login WHERE user=? AND password=?")) {
 
                 ps.setString(1, user);
                 ps.setString(2, password);
 
-                rs = ps.executeQuery();
-                logged = rs.next();
-
-            } finally {
-                if (rs != null) rs.close();
+                try (final ResultSet rs = ps.executeQuery()) {
+                    return rs.next();
+                }
             }
-
         } catch (SQLException | IOException e) {
             Job.logger.log(Level.SEVERE, "{Engine}", e);
         }
@@ -56,26 +53,17 @@ public class Engine {
 
     public List<Project> getProjects(String user) {
 
-        ResultSet rs = null;
-        ArrayList<Project> prj = null;
+        final List<Project> prj = new ArrayList<>();
 
-        try (final Connection c = Database.open()){
+        try (final Connection c = Database.open(true)) {
             try (final PreparedStatement ps = c.prepareStatement("SELECT p.id, p.description FROM project p JOIN user_project up ON (p.id=up.project_id) WHERE up.user_id=?")) {
-
-
                 ps.setString(1, user);
-                rs = ps.executeQuery();
-
-                prj = new ArrayList<>();
-
-                while (rs.next()) {
-                    prj.add(new Project(rs.getString(1), rs.getString(2)));
+                try (final ResultSet rs = ps.executeQuery()) {
+                    while (rs.next()) {
+                        prj.add(new Project(rs.getString(1), rs.getString(2)));
+                    }
                 }
-
-            } finally {
-                if (rs != null) rs.close();
             }
-
         } catch (Exception e) {
             Job.logger.log(Level.SEVERE, "{Engine}", e);
         }
@@ -86,40 +74,26 @@ public class Engine {
 
     public Status getStatus(String user_id) {
 
-        CallableStatement cs = null;
-        ResultSet rs = null;
-        Connection c = null;
-        Status status = new Status();
+        try (final Connection c = Database.open(true)) {
 
-        try {
+            try (final PreparedStatement ps = c.prepareStatement("SELECT project_id, event_id FROM user_event WHERE user_id=?")) {
 
-            c = Database.open();
+                ps.setString(1, user_id);
 
-            try {
+                try (final ResultSet rs = ps.executeQuery()) {
+                    if (rs.next()) {
 
-                cs = c.prepareCall("{CALL getStatus(?)}");
-                cs.setString(1, user_id);
+                        return new Status(rs.getString("project_id"), rs.getInt("event_id"));
 
-                rs = cs.executeQuery();
-                if (rs.next()) {
-
-                    status.setStatus(rs.getInt(1));
-                    status.setProject_id(rs.getString(2));
-                    status.setEvent_id(rs.getInt(3));
-
+                    }
                 }
 
-            } finally {
-                if (rs != null) rs.close();
-                if (cs != null) cs.close();
             }
         } catch (Exception e) {
             Job.logger.log(Level.SEVERE, "{Engine}", e);
-        } finally {
-            if (c != null) Database.close(c);
         }
 
-        return status;
+        return INACTIVE_STATUS;
     }
 
     public String getNote(int id) {
@@ -130,7 +104,7 @@ public class Engine {
         ResultSet rs = null;
         try {
 
-            c = Database.open();
+            c = Database.open(true);
 
             try {
 
@@ -164,7 +138,7 @@ public class Engine {
         Connection c = null;
         try {
 
-            c = Database.open();
+            c = Database.open(false);
 
             try {
                 cs = c.prepareCall("{CALL updateNote(?, ?)}");
@@ -186,71 +160,68 @@ public class Engine {
 
     public int startProject(String user_id, String project_id) {
 
-        int event_id = 0;
-        ResultSet rs = null;
-        Connection c = null;
-        CallableStatement cs = null;
-
         Job.logger.log(Level.FINE, "call startProject('" + user_id +
                 "'," + project_id + ")");
 
-        try {
+        try (final Connection c = Database.open(false)) {
+            try (final PreparedStatement ps = c.prepareStatement("INSERT INTO event_store(user_id,project_id,event_type) VALUES(?,?,?)", Statement.RETURN_GENERATED_KEYS)) {
 
-            c = Database.open();
+                ps.setString(1, user_id);
+                ps.setString(2, project_id);
+                ps.setString(3, "PROJECT_START");
 
-            try {
+                if (ps.executeUpdate() > 0) {
+                    try (final ResultSet rs = ps.getGeneratedKeys()) {
+                        if (rs.next()) {
+                            final int event_id = rs.getInt(1);
+                            try (final PreparedStatement ps2 = c.prepareStatement("UPDATE user_event SET event_id=?,project_id=? WHERE user_id=?")) {
+                                ps2.setInt(1, event_id);
+                                ps2.setString(2, project_id);
+                                ps2.setString(3, user_id);
 
-                cs = c.prepareCall("{CALL startProject(?, ?)}");
-                cs.setString(1, user_id);
-                cs.setString(2, project_id);
-
-                rs = cs.executeQuery();
-
-                if (rs.next()) {
-                    event_id = rs.getInt(1);
+                                if (ps2.executeUpdate()>0) {
+                                    c.commit();
+                                    return event_id;
+                                }
+                            }
+                        }
+                    }
                 }
-            } finally {
-                if (rs != null) rs.close();
-                if (cs != null) cs.close();
             }
         } catch (SQLException e) {
             Job.logger.log(Level.SEVERE, "{Engine}", e);
         } catch (Exception e2) {
             Job.logger.log(Level.SEVERE, "{Engine}", e2);
-        } finally {
-            if (c != null) Database.close(c);
         }
 
-        return event_id;
+        return -1;
     }
 
-    public void stopProject(String user_id) {
+    public boolean stopProject(String user_id, String user_project_id) {
 
-        CallableStatement cs = null;
-        Connection c = null;
         Job.logger.log(Level.FINE, "call stopProject('" + user_id + "')");
 
-        try {
+        try (final Connection c = Database.open(false)) {
 
-            c = Database.open();
+            try (final PreparedStatement ps = c.prepareStatement(
+                    "INSERT INTO event_store(user_id,project_id,event_type,parent_id)\n" +
+                    "SELECT user_id, project_id, ? as event_type, event_id\n" +
+                    "FROM user_event where user_id=? AND project_id=?")) {
 
-            try {
-
-                cs = c.prepareCall("{CALL stopProject(?)}");
-                cs.setString(1, user_id);
-                cs.execute();
-
-            } finally {
-                if (cs != null) cs.close();
+                ps.setString(1, "PROJECT_STOP");
+                ps.setString(2, user_id);
+                ps.setString(3, user_project_id);
+                if (ps.executeUpdate()>0) {
+                    c.commit();
+                    return true;
+                }
             }
         } catch (SQLException e) {
             // TODO Auto-generated catch block
             Job.logger.log(Level.SEVERE, "{Engine}", e);
         } catch (Exception e2) {
             Job.logger.log(Level.SEVERE, "{Engine}", e2);
-        } finally {
-            if (c != null) Database.close(c);
         }
-
+        return false;
     }
 }

@@ -12,7 +12,7 @@ public class Database {
     public static String dbname = "jobber.db";
     public static String user = "test";
 
-    static Connection open() throws IOException {
+    static Connection open(final boolean autocommit) throws IOException {
 
         Connection c = null;
 
@@ -24,7 +24,7 @@ public class Database {
         //c = null;
         try {
             c = DriverManager.getConnection("jdbc:sqlite:" + server + "/" + dbname);
-            c.setAutoCommit(true);
+            c.setAutoCommit(autocommit);
         } catch (SQLException e1) {
             Job.logger.log(Level.SEVERE, Database.class.getSimpleName(), e1);
         }
