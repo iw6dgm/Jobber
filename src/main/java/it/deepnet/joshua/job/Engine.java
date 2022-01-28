@@ -1,7 +1,6 @@
 package it.deepnet.joshua.job;
 
 import java.io.IOException;
-import java.sql.CallableStatement;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -10,9 +9,11 @@ import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.logging.Level;
+import java.util.logging.Logger;
 
 
 public class Engine {
+    private static final Logger logger = Logger.getLogger(Engine.class.getSimpleName());
     private static final Status INACTIVE_STATUS = new Status();
     private String server = "";
 
@@ -45,7 +46,7 @@ public class Engine {
                 }
             }
         } catch (SQLException | IOException e) {
-            Job.logger.log(Level.SEVERE, "{Engine}", e);
+            logger.log(Level.SEVERE, "{Engine}", e);
         }
         return logged;
 
@@ -65,7 +66,7 @@ public class Engine {
                 }
             }
         } catch (Exception e) {
-            Job.logger.log(Level.SEVERE, "{Engine}", e);
+            logger.log(Level.SEVERE, "{Engine}", e);
         }
 
         return prj;
@@ -76,7 +77,7 @@ public class Engine {
 
         try (final Connection c = Database.open(true)) {
 
-            try (final PreparedStatement ps = c.prepareStatement("SELECT project_id, event_id FROM user_event WHERE user_id=?")) {
+            try (final PreparedStatement ps = c.prepareStatement("SELECT e.project_id, e.rowid AS event_id FROM user_event u JOIN event_store e ON u.event_id = e.rowid WHERE u.user_id=?")) {
 
                 ps.setString(1, user_id);
 
@@ -90,7 +91,7 @@ public class Engine {
 
             }
         } catch (Exception e) {
-            Job.logger.log(Level.SEVERE, "{Engine}", e);
+            logger.log(Level.SEVERE, "{Engine}", e);
         }
 
         return INACTIVE_STATUS;
@@ -98,69 +99,47 @@ public class Engine {
 
     public String getNote(int id) {
 
-        String note = "<Empty>";
-        Connection c = null;
-        CallableStatement cs = null;
-        ResultSet rs = null;
         try {
 
-            c = Database.open(true);
+            try (final Connection c = Database.open(true)) {
 
-            try {
-
-                cs = c.prepareCall("{CALL getNote(?)}");
-                cs.setInt(1, id);
-
-                rs = cs.executeQuery();
-
-                if (rs.next()) {
-                    note = rs.getString(1);
+                try (final PreparedStatement ps = c.prepareStatement("SELECT body FROM event_store WHERE parent_id = ? AND event_type = ? ORDER BY event_date DESC LIMIT 1")) {
+                    ps.setInt(1, id);
+                    ps.setString(2, "NOTE");
+                    try (final ResultSet rs = ps.executeQuery()) {
+                        if (rs.next()) {
+                            return rs.getString(1);
+                        }
+                    }
                 }
+            }
+        } catch (Exception e) {
+            logger.log(Level.SEVERE, "{Engine}", e);
+        }
 
-            } finally {
-                if (rs != null) rs.close();
-                if (cs != null) cs.close();
+        return "<Empty>";
+    }
+
+    public void updateNote(String user_id, String project_id, int event_id, String note) {
+        try (final Connection c = Database.open(true)) {
+
+            try (final PreparedStatement ps = c.prepareStatement("INSERT INTO event_store (user_id,project_id,event_type,parent_id,body) VALUES(?,?,?,?,?)")) {
+                ps.setString(1, user_id);
+                ps.setString(2, project_id);
+                ps.setString(3, "NOTE");
+                ps.setInt(4, event_id);
+                ps.setString(5, note);
+                ps.executeUpdate();
             }
 
         } catch (Exception e) {
-            Job.logger.log(Level.SEVERE, "{Engine}", e);
-        } finally {
-            if (c != null) Database.close(c);
-        }
-
-        return note;
-
-    }
-
-    public void updateNote(int id, String note) {
-
-        CallableStatement cs = null;
-        Connection c = null;
-        try {
-
-            c = Database.open(false);
-
-            try {
-                cs = c.prepareCall("{CALL updateNote(?, ?)}");
-                cs.setInt(1, id);
-                cs.setString(2, note);
-                cs.execute();
-            } finally {
-                if (cs != null) cs.close();
-            }
-
-        } catch (SQLException e) {
-            Job.logger.log(Level.SEVERE, "{Engine}", e);
-        } catch (Exception e2) {
-            Job.logger.log(Level.SEVERE, "{Engine}", e2);
-        } finally {
-            if (c != null) Database.close(c);
+            logger.log(Level.SEVERE, "{Engine}", e);
         }
     }
 
     public int startProject(String user_id, String project_id) {
 
-        Job.logger.log(Level.FINE, "call startProject('" + user_id +
+        logger.log(Level.FINE, "call startProject('" + user_id +
                 "'," + project_id + ")");
 
         try (final Connection c = Database.open(false)) {
@@ -174,12 +153,12 @@ public class Engine {
                     try (final ResultSet rs = ps.getGeneratedKeys()) {
                         if (rs.next()) {
                             final int event_id = rs.getInt(1);
-                            try (final PreparedStatement ps2 = c.prepareStatement("UPDATE user_event SET event_id=?,project_id=? WHERE user_id=?")) {
-                                ps2.setInt(1, event_id);
-                                ps2.setString(2, project_id);
-                                ps2.setString(3, user_id);
+                            try (final PreparedStatement ps2 = c.prepareStatement("INSERT INTO user_event(user_id, event_id) VALUES(?,?) ON CONFLICT(user_id) DO UPDATE SET event_id=?")) {
+                                ps2.setString(1, user_id);
+                                ps2.setInt(2, event_id);
+                                ps2.setInt(3, event_id);
 
-                                if (ps2.executeUpdate()>0) {
+                                if (ps2.executeUpdate() > 0) {
                                     c.commit();
                                     return event_id;
                                 }
@@ -188,39 +167,39 @@ public class Engine {
                     }
                 }
             }
-        } catch (SQLException e) {
-            Job.logger.log(Level.SEVERE, "{Engine}", e);
-        } catch (Exception e2) {
-            Job.logger.log(Level.SEVERE, "{Engine}", e2);
+        } catch (Exception e) {
+            logger.log(Level.SEVERE, "{Engine}", e);
         }
 
         return -1;
     }
 
-    public boolean stopProject(String user_id, String user_project_id) {
+    public boolean stopProject(String user_id) {
 
-        Job.logger.log(Level.FINE, "call stopProject('" + user_id + "')");
+        logger.log(Level.FINE, "call stopProject('" + user_id + "')");
 
         try (final Connection c = Database.open(false)) {
 
             try (final PreparedStatement ps = c.prepareStatement(
                     "INSERT INTO event_store(user_id,project_id,event_type,parent_id)\n" +
-                    "SELECT user_id, project_id, ? as event_type, event_id\n" +
-                    "FROM user_event where user_id=? AND project_id=?")) {
+                            "SELECT u.user_id, e.project_id, ? as event_type, u.event_id\n" +
+                            "FROM user_event u JOIN event_store e ON u.event_id = e.rowid WHERE u.user_id=?")) {
 
                 ps.setString(1, "PROJECT_STOP");
                 ps.setString(2, user_id);
-                ps.setString(3, user_project_id);
-                if (ps.executeUpdate()>0) {
-                    c.commit();
-                    return true;
+                if (ps.executeUpdate() > 0) {
+
+                    try (final PreparedStatement ps2 = c.prepareStatement("UPDATE user_event SET event_id=NULL WHERE user_id=?")) {
+                        ps2.setString(1, user_id);
+                        if (ps2.executeUpdate() > 0) {
+                            c.commit();
+                            return true;
+                        }
+                    }
                 }
             }
-        } catch (SQLException e) {
-            // TODO Auto-generated catch block
-            Job.logger.log(Level.SEVERE, "{Engine}", e);
-        } catch (Exception e2) {
-            Job.logger.log(Level.SEVERE, "{Engine}", e2);
+        } catch (Exception e) {
+            logger.log(Level.SEVERE, "{Engine}", e);
         }
         return false;
     }

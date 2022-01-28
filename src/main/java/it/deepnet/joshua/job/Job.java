@@ -1,5 +1,5 @@
 /**
- * @version 0.85.3
+ * @version 0.9.0
  * @author Maurizio Camangi
  */
 package it.deepnet.joshua.job;
@@ -17,38 +17,37 @@ import java.util.logging.Logger;
 
 public class Job extends JFrame {
 
-    static public final Logger logger = Logger.getLogger(Job.class.getName());
+    private static final Logger logger = Logger.getLogger(Job.class.getName());
     private static final long serialVersionUID = 1L;
-    private final String VERSION = "0.9.0 \t(C) Maurizio Camangi";
-    Container cp;
-    Status usr_status = null;
-    Project usr_prj = null;
+    private static final String VERSION = "0.9.0 \t(C) Maurizio Camangi";
+    private Container cp;
+    private Status usr_status = null;
+    private Project usr_prj = null;
 
-    //private static boolean isHTTPConnection = false;
-    static Engine engine;
-    boolean logged = false;
+    private static Engine engine;
+    private boolean logged = false;
     String user_project_id;
     int user_event_id = 0;
     static String user_id = "user";
     static String user_pwd = "tester";
     List<Project> projects;
-    JPanel title = new JPanel(),
+    private final static  JPanel title = new JPanel(),
             row1 = new JPanel(),
             row2 = new JPanel(),
             row3 = new JPanel(),
             row4 = new JPanel(),
             row5 = new JPanel();
-    static JTextField username = new JTextField(12);
-    static JPasswordField password = new JPasswordField(12);
-    JButton jblogin = new JButton("Login"),
+    private final static JTextField username = new JTextField(12);
+    private final static JPasswordField password = new JPasswordField(12);
+    private final static JButton jblogin = new JButton("Login"),
             jbcancel = new JButton("Cancel"),
             jbstart = new JButton("Start"),
             jbstop = new JButton("Stop"),
             jblogout = new JButton("Logout"),
             jbnote = new JButton("Note");
-    JComboBox jcombo = new JComboBox();
-    JTextArea status = new JTextArea(8, 35);
-    ActionListener alogin = e -> {
+    final JComboBox<Project> jcombo = new JComboBox<>();
+    final JTextArea status = new JTextArea(8, 35);
+    final ActionListener alogin = e -> {
         user_id = username.getText();
         user_pwd = new String(password.getPassword());
         doLogin();
@@ -87,7 +86,7 @@ public class Job extends JFrame {
 
                 @Override
                 public void actionPerformed(ActionEvent e) {
-                    if (engine.stopProject(user_id, usr_prj.getKey())) {
+                    if (engine.stopProject(user_id)) {
                         status.append("Stopping job name " +
                                 usr_prj.getDescription() + "\n");
                         logger.log(Level.FINE, "Stopping job name " +
@@ -122,7 +121,7 @@ public class Job extends JFrame {
                 logged = false;
             },
             anote = e -> {
-                JFrame frame = new Note(user_event_id);
+                JFrame frame = new Note(user_id, user_project_id, user_event_id);
                 frame.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
                 frame.setSize(365, 205);
                 frame.setVisible(true);
@@ -240,15 +239,13 @@ public class Job extends JFrame {
 
         logger.log(Level.CONFIG, "Password = " + user_pwd);
 
-        final String http = "MySQL"; // TODO remove
         engine = new Engine();
-        logger.log(Level.CONFIG, "Connection type = " + http);
         logger.log(Level.CONFIG, "Server = " + engine.getServer());
 
         Console.run(new Job(), 425, 475);
     }
 
-    public void doLogin() {
+    private void doLogin() {
         if (user_id.length() > 0) {
             status.append(user_id + " login in progress...\n");
             logged = engine.login(user_id, user_pwd);
@@ -265,10 +262,9 @@ public class Job extends JFrame {
 
                     if (projects != null && projects.size() > 0) {
 
-                        for (int i = 0; i < projects.size(); i++) {
-                            jcombo.addItem(projects.get(i));
+                        for (Project project : projects) {
+                            jcombo.addItem(project);
                         }
-
 
                         usr_status = engine.getStatus(user_id);
 
@@ -286,11 +282,12 @@ public class Job extends JFrame {
                                 user_event_id = usr_status.getEvent_id();
 
                                 for (int i = 0; i < jcombo.getItemCount(); i++) {
-                                    if (((Project) jcombo.getItemAt(i)).getKey() == user_project_id) {
+                                    final Project p = jcombo.getItemAt(i);
+                                    if (p.getKey().equals(user_project_id)) {
                                         jcombo.setSelectedIndex(i);
                                         status.append("User has an active project called " +
-                                                ((Project) jcombo.getItemAt(i)).getDescription() + "\n");
-                                        usr_prj = new Project(user_project_id, ((Project) jcombo.getItemAt(i)).getDescription());
+                                                p.getDescription() + "\n");
+                                        usr_prj = new Project(user_project_id, p.getDescription());
                                     }
                                 }
 

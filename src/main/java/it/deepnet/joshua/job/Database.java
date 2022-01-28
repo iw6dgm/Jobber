@@ -5,12 +5,14 @@ import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
 import java.util.logging.Level;
+import java.util.logging.Logger;
 
 public class Database {
+    
+    private static final Logger logger = Logger.getLogger(Database.class.getSimpleName());
 
     public static String server = "/Users/maurizio_camangi/db";
     public static String dbname = "jobber.db";
-    public static String user = "test";
 
     static Connection open(final boolean autocommit) throws IOException {
 
@@ -19,18 +21,18 @@ public class Database {
         try {
             Class.forName("org.sqlite.JDBC").newInstance();
         } catch (InstantiationException | IllegalAccessException | ClassNotFoundException e) {
-            Job.logger.log(Level.SEVERE, Database.class.getSimpleName(), e);
+            logger.log(Level.SEVERE, Database.class.getSimpleName(), e);
         }
         //c = null;
         try {
             c = DriverManager.getConnection("jdbc:sqlite:" + server + "/" + dbname);
             c.setAutoCommit(autocommit);
         } catch (SQLException e1) {
-            Job.logger.log(Level.SEVERE, Database.class.getSimpleName(), e1);
+            logger.log(Level.SEVERE, Database.class.getSimpleName(), e1);
         }
 
-        if (c != null) Job.logger.log(Level.FINE, "Connection ok!");
-        else Job.logger.log(Level.SEVERE, Database.class.getSimpleName(), "Connection failed!");
+        if (c != null) logger.log(Level.FINE, "Connection ok!");
+        else logger.log(Level.SEVERE, Database.class.getSimpleName(), "Connection failed!");
         return c;
     }
 
@@ -39,11 +41,11 @@ public class Database {
         try {
             c.close();
         } catch (SQLException e2) {
-            Job.logger.log(Level.SEVERE, Database.class.getSimpleName(), e2);
+            logger.log(Level.SEVERE, Database.class.getSimpleName(), e2);
         }
 
 
-        Job.logger.log(Level.FINE, "Connection closed!");
+        logger.log(Level.FINE, "Connection closed!");
     }
 
 }

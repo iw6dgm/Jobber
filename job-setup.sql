@@ -43,12 +43,20 @@ CREATE TABLE event_store (
 	event_type VARCHAR(32) NOT NULL,
 	event_date DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL,
 	parent_id INTEGER NULL,
+        body VARCHAR(256) NULL,
 	foreign key (user_id) references user(id),
 	foreign key (project_id) references project(id)
 );
 
+DROP INDEX event_store_idx1;
+
+CREATE INDEX event_store_idx1 ON event_store(parent_id, event_type) WHERE parent_id IS NOT NULL;
+
+DROP TABLE user_event;
+
 CREATE TABLE user_event (
 	user_id VARCHAR(32) PRIMARY KEY NOT NULL,
-	project_id VARCHAR(32) NULL,
-	event_id INTEGER NULL
+	event_id INTEGER NULL,
+	foreign key (user_id) references user(id),
+	foreign key (event_id) references event_store(rowid)
 );
