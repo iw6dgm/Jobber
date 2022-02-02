@@ -1,5 +1,5 @@
 /**
- * @version 0.9.0
+ * @version 0.85.3
  * @author Maurizio Camangi
  */
 package it.deepnet.joshua.job;
@@ -17,49 +17,61 @@ import java.util.logging.Logger;
 
 public class Job extends JFrame {
 
-    private static final Logger logger = Logger.getLogger(Job.class.getName());
+    static public final Logger logger = Logger.getLogger(Job.class.getName());
     private static final long serialVersionUID = 1L;
-    private static final String VERSION = "0.9.0 \t(C) Maurizio Camangi";
-    private Container cp;
-    private Status usr_status = null;
-    private Project usr_prj = null;
+    private final String VERSION = "0.85.3 \t(C) Maurizio Camangi";
+    Container cp;
+    Status usr_status = null;
+    Project usr_prj = null;
 
-    private static Engine engine;
-    private boolean logged = false;
-    String user_project_id;
+    //private static boolean isHTTPConnection = false;
+    static Engine engine;
+    boolean logged = false;
+    int user_project_id = 1;
     int user_event_id = 0;
-    static String user_id = "user";
-    static String user_pwd = "tester";
+    static String user_id = "";
+    static String user_pwd = "";
     List<Project> projects;
-    private final static  JPanel title = new JPanel(),
+    JPanel title = new JPanel(),
             row1 = new JPanel(),
             row2 = new JPanel(),
             row3 = new JPanel(),
             row4 = new JPanel(),
             row5 = new JPanel();
-    private final static JTextField username = new JTextField(12);
-    private final static JPasswordField password = new JPasswordField(12);
-    private final static JButton jblogin = new JButton("Login"),
+    static JTextField username = new JTextField(12);
+    static JPasswordField password = new JPasswordField(12);
+    JButton jblogin = new JButton("Login"),
             jbcancel = new JButton("Cancel"),
             jbstart = new JButton("Start"),
             jbstop = new JButton("Stop"),
             jblogout = new JButton("Logout"),
             jbnote = new JButton("Note");
-    final JComboBox<Project> jcombo = new JComboBox<>();
-    final JTextArea status = new JTextArea(8, 35);
-    final ActionListener alogin = e -> {
-        user_id = username.getText();
-        user_pwd = new String(password.getPassword());
-        doLogin();
+    JComboBox jcombo = new JComboBox();
+    JTextArea status = new JTextArea(8, 35);
+    ActionListener alogin = new ActionListener() {
+
+        @Override
+        public void actionPerformed(ActionEvent e) {
+            user_id = username.getText();
+            user_pwd = new String(password.getPassword());
+            doLogin();
+        }
     },
-            acancel = e -> {
-                username.setText("");
-                password.setText("");
+            acancel = new ActionListener() {
+
+                @Override
+                public void actionPerformed(ActionEvent e) {
+                    username.setText("");
+                    password.setText("");
+                }
             },
             astart = new ActionListener() {
 
                 @Override
                 public void actionPerformed(ActionEvent e) {
+                    jbstart.setEnabled(false);
+                    jbstop.setEnabled(true);
+                    jbnote.setEnabled(true);
                     user_project_id = ((Project) jcombo.getSelectedItem()).getKey();
                     user_event_id = engine.startProject(user_id, user_project_id);
 
@@ -71,9 +83,6 @@ public class Job extends JFrame {
                                 jcombo.getSelectedItem().toString() + " with event_id=" +
                                 user_event_id);
                         usr_prj = new Project(user_project_id, jcombo.getSelectedItem().toString());
-                        jbstart.setEnabled(false);
-                        jbstop.setEnabled(true);
-                        jbnote.setEnabled(true);
                         jcombo.setEnabled(false);
                     } else {
                         status.append("WARNING : UNABLE TO START A PROJECT");
@@ -86,46 +95,50 @@ public class Job extends JFrame {
 
                 @Override
                 public void actionPerformed(ActionEvent e) {
-                    if (engine.stopProject(user_id)) {
-                        status.append("Stopping job name " +
-                                usr_prj.getDescription() + "\n");
-                        logger.log(Level.FINE, "Stopping job name " +
-                                usr_prj.getDescription());
-                        jbstart.setEnabled(true);
-                        jbstop.setEnabled(false);
-                        jbnote.setEnabled(false);
-                        jcombo.setEnabled(true);
-                    } else {
-                        status.append("WARNING : UNABLE TO STOP A PROJECT");
-                        logger.warning("UNABLE TO STOP A PROJECT");
-                    }
+                    jbstart.setEnabled(true);
+                    jbstop.setEnabled(false);
+                    jbnote.setEnabled(false);
+                    status.append("Stopping job name " +
+                            usr_prj.getDescription() + "\n");
+                    logger.log(Level.FINE, "Stopping job name " +
+                            usr_prj.getDescription());
+                    engine.stopProject(user_id);
+                    jcombo.setEnabled(true);
                 }
             },
-            alogout = e -> {
-                jbstart.setEnabled(false);
-                jbstop.setEnabled(false);
-                jbnote.setEnabled(false);
-                status.append("Logout " +
-                        user_id + "...\n");
-                logger.log(Level.FINE, "Logout " +
-                        user_id);
-                jcombo.setEnabled(false);
-                username.setEnabled(true);
-                password.setEnabled(true);
-                username.setText("");
-                password.setText("");
-                jblogin.setEnabled(true);
-                jbcancel.setEnabled(true);
-                jblogout.setEnabled(false);
-                status.append("Connection closed...\n");
-                logged = false;
+            alogout = new ActionListener() {
+
+                @Override
+                public void actionPerformed(ActionEvent e) {
+                    jbstart.setEnabled(false);
+                    jbstop.setEnabled(false);
+                    jbnote.setEnabled(false);
+                    status.append("Logout " +
+                            user_id + "...\n");
+                    logger.log(Level.FINE, "Logout " +
+                            user_id);
+                    jcombo.setEnabled(false);
+                    username.setEnabled(true);
+                    password.setEnabled(true);
+                    username.setText("");
+                    password.setText("");
+                    jblogin.setEnabled(true);
+                    jbcancel.setEnabled(true);
+                    jblogout.setEnabled(false);
+                    status.append("Connection closed...\n");
+                    logged = false;
+                }
             },
-            anote = e -> {
-                JFrame frame = new Note(user_id, user_project_id, user_event_id);
-                frame.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
-                frame.setSize(365, 205);
-                frame.setVisible(true);
-                frame.setResizable(false);
+            anote = new ActionListener() {
+
+                @Override
+                public void actionPerformed(ActionEvent e) {
+                    JFrame frame = new Note(user_event_id);
+                    frame.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
+                    frame.setSize(365, 205);
+                    frame.setVisible(true);
+                    frame.setResizable(false);
+                }
             };
 
     public Job() {
@@ -206,20 +219,37 @@ public class Job extends JFrame {
         Loadxml.init();
 
         if (Loadxml.getValue("server") != null) {
-            Database.server = Loadxml.getValue("server").trim();
+            MySQL.server = Loadxml.getValue("server").trim();
         } else {
-            Database.server = "localhost";
+            MySQL.server = "localhost";
         }
 
-        logger.log(Level.CONFIG, "Database = " + Database.server);
+        logger.log(Level.CONFIG, "MySQL server = " + MySQL.server);
+
+        if (Loadxml.getValue("dbuser") != null) {
+            MySQL.user = Loadxml.getValue("dbuser").trim();
+        } else {
+            MySQL.user = "job";
+        }
+
+        logger.log(Level.CONFIG, "MySQL dbuser = " + MySQL.user);
+
+
+        if (Loadxml.getValue("dbpassword") != null) {
+            MySQL.password = Loadxml.getValue("dbpassword");
+        } else {
+            MySQL.password = "";
+        }
+
+        logger.log(Level.CONFIG, "MySQL dbpassword = " + MySQL.password);
 
         if (Loadxml.getValue("dbname") != null) {
-            Database.dbname = Loadxml.getValue("dbname").trim();
+            MySQL.dbname = Loadxml.getValue("dbname").trim();
         } else {
-            Database.dbname = "jobber.db";
+            MySQL.dbname = "job";
         }
 
-        logger.log(Level.CONFIG, "Database dbname = " + Database.dbname);
+        logger.log(Level.CONFIG, "MySQL dbname = " + MySQL.dbname);
 
         if (Loadxml.getValue("user") != null) {
             user_id = Loadxml.getValue("user").trim();
@@ -239,13 +269,34 @@ public class Job extends JFrame {
 
         logger.log(Level.CONFIG, "Password = " + user_pwd);
 
-        engine = new Engine();
+        String http = Loadxml.getValue("connection");
+
+        if (Loadxml.getValue("httpserver") != null) {
+            HTTPEngine.setUrl(Loadxml.getValue("httpserver").trim());
+        } else {
+            HTTPEngine.setUrl("http://localhost");
+        }
+
+        logger.log(Level.CONFIG, "HTTP server = " + HTTPEngine.getUrl());
+
+        if ("true".equals(Loadxml.getValue("encrypt"))) {
+            MySQL.encrypt = "true";
+        }
+
+        if (http != null && http.equalsIgnoreCase("http")) {
+            engine = new HTTPEngine();
+        } else {
+            engine = new Engine();
+            http = "MySQL";
+        }
+
+        logger.log(Level.CONFIG, "Connection type = " + http);
         logger.log(Level.CONFIG, "Server = " + engine.getServer());
 
         Console.run(new Job(), 425, 475);
     }
 
-    private void doLogin() {
+    public void doLogin() {
         if (user_id.length() > 0) {
             status.append(user_id + " login in progress...\n");
             logged = engine.login(user_id, user_pwd);
@@ -262,15 +313,16 @@ public class Job extends JFrame {
 
                     if (projects != null && projects.size() > 0) {
 
-                        for (Project project : projects) {
-                            jcombo.addItem(project);
+                        for (int i = 0; i < projects.size(); i++) {
+                            jcombo.addItem(projects.get(i));
                         }
+
 
                         usr_status = engine.getStatus(user_id);
 
                         if (usr_status != null) {
 
-                            if (!usr_status.isActive()) { // User Idle
+                            if (usr_status.getStatus() == 0) { // User Idle
 
                                 jcombo.setEnabled(true);
                                 jcombo.setFocusable(false);
@@ -282,12 +334,11 @@ public class Job extends JFrame {
                                 user_event_id = usr_status.getEvent_id();
 
                                 for (int i = 0; i < jcombo.getItemCount(); i++) {
-                                    final Project p = jcombo.getItemAt(i);
-                                    if (p.getKey().equals(user_project_id)) {
+                                    if (((Project) jcombo.getItemAt(i)).getKey() == user_project_id) {
                                         jcombo.setSelectedIndex(i);
                                         status.append("User has an active project called " +
-                                                p.getDescription() + "\n");
-                                        usr_prj = new Project(user_project_id, p.getDescription());
+                                                ((Project) jcombo.getItemAt(i)).getDescription() + "\n");
+                                        usr_prj = new Project(user_project_id, ((Project) jcombo.getItemAt(i)).getDescription());
                                     }
                                 }
 

@@ -1,20 +1,16 @@
 package it.deepnet.joshua.job;
 
 import java.io.IOException;
+import java.sql.CallableStatement;
 import java.sql.Connection;
-import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.logging.Level;
-import java.util.logging.Logger;
 
 
 public class Engine {
-    private static final Logger logger = Logger.getLogger(Engine.class.getSimpleName());
-    private static final Status INACTIVE_STATUS = new Status();
     private String server = "";
 
     public void setServer(String s) {
@@ -27,26 +23,35 @@ public class Engine {
 
     public Engine() {
 
-        setServer(Database.server);
+        setServer(MySQL.server);
 
     }
 
     public boolean login(String user, String password) {
 
         boolean logged = false;
-        try (final Connection connection = Database.open(true)) {
+        ResultSet rs = null;
+        CallableStatement cs = null;
 
-            try (final PreparedStatement ps = connection.prepareStatement("SELECT 1 FROM login WHERE user=? AND password=?")) {
 
-                ps.setString(1, user);
-                ps.setString(2, password);
+        try (Connection connection = MySQL.open()) {
 
-                try (final ResultSet rs = ps.executeQuery()) {
-                    return rs.next();
-                }
+            try {
+
+                cs = connection.prepareCall("{CALL login(?, ?)}");
+                cs.setString(1, user);
+                cs.setString(2, password);
+
+                rs = cs.executeQuery();
+                logged = rs.next();
+
+            } finally {
+                if (rs != null) rs.close();
+                if (cs != null) cs.close();
             }
+
         } catch (SQLException | IOException e) {
-            logger.log(Level.SEVERE, "{Engine}", e);
+            Job.logger.log(Level.SEVERE, "{Engine}", e);
         }
         return logged;
 
@@ -54,19 +59,36 @@ public class Engine {
 
     public List<Project> getProjects(String user) {
 
-        final List<Project> prj = new ArrayList<>();
+        CallableStatement cs = null;
+        ResultSet rs = null;
+        ArrayList<Project> prj = null;
+        Connection c = null;
+        try {
 
-        try (final Connection c = Database.open(true)) {
-            try (final PreparedStatement ps = c.prepareStatement("SELECT p.id, p.description FROM project p JOIN user_project up ON (p.id=up.project_id) WHERE up.user_id=?")) {
-                ps.setString(1, user);
-                try (final ResultSet rs = ps.executeQuery()) {
-                    while (rs.next()) {
-                        prj.add(new Project(rs.getString(1), rs.getString(2)));
-                    }
+            c = MySQL.open();
+
+            try {
+
+                cs = c.prepareCall("{CALL getProjects(?)}");
+
+                cs.setString(1, user);
+                rs = cs.executeQuery();
+
+                prj = new ArrayList<Project>();
+
+                while (rs.next()) {
+                    prj.add(new Project(rs.getInt(1), rs.getString(2)));
                 }
+
+            } finally {
+                if (rs != null) rs.close();
+                if (cs != null) cs.close();
             }
+
         } catch (Exception e) {
-            logger.log(Level.SEVERE, "{Engine}", e);
+            Job.logger.log(Level.SEVERE, "{Engine}", e);
+        } finally {
+            if (c != null) MySQL.close(c);
         }
 
         return prj;
@@ -75,132 +97,171 @@ public class Engine {
 
     public Status getStatus(String user_id) {
 
-        try (final Connection c = Database.open(true)) {
+        CallableStatement cs = null;
+        ResultSet rs = null;
+        Connection c = null;
+        Status status = new Status();
 
-            try (final PreparedStatement ps = c.prepareStatement("SELECT e.project_id, e.rowid AS event_id FROM user_event u JOIN event_store e ON u.event_id = e.rowid WHERE u.user_id=?")) {
+        try {
 
-                ps.setString(1, user_id);
+            c = MySQL.open();
 
-                try (final ResultSet rs = ps.executeQuery()) {
-                    if (rs.next()) {
+            try {
 
-                        return new Status(rs.getString("project_id"), rs.getInt("event_id"));
+                cs = c.prepareCall("{CALL getStatus(?)}");
+                cs.setString(1, user_id);
 
-                    }
+                rs = cs.executeQuery();
+                if (rs.next()) {
+
+                    status.setStatus(rs.getInt(1));
+                    status.setProject_id(rs.getInt(2));
+                    status.setEvent_id(rs.getInt(3));
+
                 }
 
+            } finally {
+                if (rs != null) rs.close();
+                if (cs != null) cs.close();
             }
         } catch (Exception e) {
-            logger.log(Level.SEVERE, "{Engine}", e);
+            Job.logger.log(Level.SEVERE, "{Engine}", e);
+        } finally {
+            if (c != null) MySQL.close(c);
         }
 
-        return INACTIVE_STATUS;
+        return status;
     }
 
     public String getNote(int id) {
 
+        String note = "<Empty>";
+        Connection c = null;
+        CallableStatement cs = null;
+        ResultSet rs = null;
         try {
 
-            try (final Connection c = Database.open(true)) {
+            c = MySQL.open();
 
-                try (final PreparedStatement ps = c.prepareStatement("SELECT body FROM event_store WHERE parent_id = ? AND event_type = ? ORDER BY event_date DESC LIMIT 1")) {
-                    ps.setInt(1, id);
-                    ps.setString(2, "NOTE");
-                    try (final ResultSet rs = ps.executeQuery()) {
-                        if (rs.next()) {
-                            return rs.getString(1);
-                        }
-                    }
+            try {
+
+                cs = c.prepareCall("{CALL getNote(?)}");
+                cs.setInt(1, id);
+
+                rs = cs.executeQuery();
+
+                if (rs.next()) {
+                    note = rs.getString(1);
                 }
-            }
-        } catch (Exception e) {
-            logger.log(Level.SEVERE, "{Engine}", e);
-        }
 
-        return "<Empty>";
-    }
-
-    public void updateNote(String user_id, String project_id, int event_id, String note) {
-        try (final Connection c = Database.open(true)) {
-
-            try (final PreparedStatement ps = c.prepareStatement("INSERT INTO event_store (user_id,project_id,event_type,parent_id,body) VALUES(?,?,?,?,?)")) {
-                ps.setString(1, user_id);
-                ps.setString(2, project_id);
-                ps.setString(3, "NOTE");
-                ps.setInt(4, event_id);
-                ps.setString(5, note);
-                ps.executeUpdate();
+            } finally {
+                if (rs != null) rs.close();
+                if (cs != null) cs.close();
             }
 
         } catch (Exception e) {
-            logger.log(Level.SEVERE, "{Engine}", e);
+            Job.logger.log(Level.SEVERE, "{Engine}", e);
+        } finally {
+            if (c != null) MySQL.close(c);
+        }
+
+        return note;
+
+    }
+
+    public void updateNote(int id, String note) {
+
+        CallableStatement cs = null;
+        Connection c = null;
+        try {
+
+            c = MySQL.open();
+
+            try {
+                cs = c.prepareCall("{CALL updateNote(?, ?)}");
+                cs.setInt(1, id);
+                cs.setString(2, note);
+                cs.execute();
+            } finally {
+                if (cs != null) cs.close();
+            }
+
+        } catch (SQLException e) {
+            Job.logger.log(Level.SEVERE, "{Engine}", e);
+        } catch (Exception e2) {
+            Job.logger.log(Level.SEVERE, "{Engine}", e2);
+        } finally {
+            if (c != null) MySQL.close(c);
         }
     }
 
-    public int startProject(String user_id, String project_id) {
+    public int startProject(String user_id, int project_id) {
 
-        logger.log(Level.FINE, "call startProject('" + user_id +
+        int event_id = 0;
+        ResultSet rs = null;
+        Connection c = null;
+        CallableStatement cs = null;
+
+        Job.logger.log(Level.FINE, "call startProject('" + user_id +
                 "'," + project_id + ")");
 
-        try (final Connection c = Database.open(false)) {
-            try (final PreparedStatement ps = c.prepareStatement("INSERT INTO event_store(user_id,project_id,event_type) VALUES(?,?,?)", Statement.RETURN_GENERATED_KEYS)) {
+        try {
 
-                ps.setString(1, user_id);
-                ps.setString(2, project_id);
-                ps.setString(3, "PROJECT_START");
+            c = MySQL.open();
 
-                if (ps.executeUpdate() > 0) {
-                    try (final ResultSet rs = ps.getGeneratedKeys()) {
-                        if (rs.next()) {
-                            final int event_id = rs.getInt(1);
-                            try (final PreparedStatement ps2 = c.prepareStatement("INSERT INTO user_event(user_id, event_id) VALUES(?,?) ON CONFLICT(user_id) DO UPDATE SET event_id=?")) {
-                                ps2.setString(1, user_id);
-                                ps2.setInt(2, event_id);
-                                ps2.setInt(3, event_id);
+            try {
 
-                                if (ps2.executeUpdate() > 0) {
-                                    c.commit();
-                                    return event_id;
-                                }
-                            }
-                        }
-                    }
+                cs = c.prepareCall("{CALL startProject(?, ?)}");
+                cs.setString(1, user_id);
+                cs.setInt(2, project_id);
+
+                rs = cs.executeQuery();
+
+                if (rs.next()) {
+                    event_id = rs.getInt(1);
                 }
+            } finally {
+                if (rs != null) rs.close();
+                if (cs != null) cs.close();
             }
-        } catch (Exception e) {
-            logger.log(Level.SEVERE, "{Engine}", e);
+        } catch (SQLException e) {
+            Job.logger.log(Level.SEVERE, "{Engine}", e);
+        } catch (Exception e2) {
+            Job.logger.log(Level.SEVERE, "{Engine}", e2);
+        } finally {
+            if (c != null) MySQL.close(c);
         }
 
-        return -1;
+        return event_id;
     }
 
-    public boolean stopProject(String user_id) {
+    public void stopProject(String user_id) {
 
-        logger.log(Level.FINE, "call stopProject('" + user_id + "')");
+        CallableStatement cs = null;
+        Connection c = null;
+        Job.logger.log(Level.FINE, "call stopProject('" + user_id + "')");
 
-        try (final Connection c = Database.open(false)) {
+        try {
 
-            try (final PreparedStatement ps = c.prepareStatement(
-                    "INSERT INTO event_store(user_id,project_id,event_type,parent_id)\n" +
-                            "SELECT u.user_id, e.project_id, ? as event_type, u.event_id\n" +
-                            "FROM user_event u JOIN event_store e ON u.event_id = e.rowid WHERE u.user_id=?")) {
+            c = MySQL.open();
 
-                ps.setString(1, "PROJECT_STOP");
-                ps.setString(2, user_id);
-                if (ps.executeUpdate() > 0) {
+            try {
 
-                    try (final PreparedStatement ps2 = c.prepareStatement("UPDATE user_event SET event_id=NULL WHERE user_id=?")) {
-                        ps2.setString(1, user_id);
-                        if (ps2.executeUpdate() > 0) {
-                            c.commit();
-                            return true;
-                        }
-                    }
-                }
+                cs = c.prepareCall("{CALL stopProject(?)}");
+                cs.setString(1, user_id);
+                cs.execute();
+
+            } finally {
+                if (cs != null) cs.close();
             }
-        } catch (Exception e) {
-            logger.log(Level.SEVERE, "{Engine}", e);
+        } catch (SQLException e) {
+            // TODO Auto-generated catch block
+            Job.logger.log(Level.SEVERE, "{Engine}", e);
+        } catch (Exception e2) {
+            Job.logger.log(Level.SEVERE, "{Engine}", e2);
+        } finally {
+            if (c != null) MySQL.close(c);
         }
-        return false;
+
     }
 }

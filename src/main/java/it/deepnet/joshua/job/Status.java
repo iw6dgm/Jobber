@@ -2,29 +2,32 @@ package it.deepnet.joshua.job;
 
 public class Status {
 
-    private final String project_id;
-    private final Integer event_id;
+    private int status;
+    private int project_id;
+    private int event_id;
 
-    public Status() {
-        project_id = null;
-        event_id = null;
+    public int getStatus() {
+        return status;
     }
 
-    public Status(String project_id, Integer event_id) {
-        this.project_id = project_id;
-        this.event_id = event_id;
+    public void setStatus(int status) {
+        this.status = status;
     }
 
-    public String getProject_id() {
+    public int getProject_id() {
         return project_id;
+    }
+
+    public void setProject_id(int project_id) {
+        this.project_id = project_id;
     }
 
     public int getEvent_id() {
         return event_id;
     }
 
-    public boolean isActive() {
-        return project_id != null && event_id != null;
+    public void setEvent_id(int event_id) {
+        this.event_id = event_id;
     }
 
 }
