@@ -1,14 +1,14 @@
 package it.deepnet.joshua.job;
 
 public class Project {
-    private final int key;
+    private final String key;
     private final String description;
 
     public String getDescription() {
         return description;
     }
 
-    public Project(final int k, final String d) {
+    public Project(final String k, final String d) {
         key = k;
         description = d;
     }
@@ -17,7 +17,7 @@ public class Project {
         return description;
     }
 
-    public int getKey() {
+    public String getKey() {
         return key;
     }
 }

@@ -2,20 +2,23 @@ package it.deepnet.joshua.job;
 
 import javax.swing.*;
 import java.awt.*;
-import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /**
  * @author Mcamangi
  */
 public class Note extends JFrame {
 
+    private static final Logger logger = Logger.getLogger(Note.class.getSimpleName());
+
     static final long serialVersionUID = 0L;
 
     //private Connection c      = null;
-    private int user_event_id = -1;
-    private String notes = "<Empty>";
+    private final String user_id;
+    private final String project_id;
+    private final int user_event_id;
 
     Container cp;
     //JPanel title = new JPanel();
@@ -33,35 +36,20 @@ public class Note extends JFrame {
     Engine engine = new Engine();
 
     ActionListener
-            aclear = new ActionListener() {
-        public void actionPerformed(ActionEvent e) {
-            note.setText("");
-        }
-    },
-            aupdate = new ActionListener() {
-                public void actionPerformed(ActionEvent e) {
-                    saveNote(user_event_id, note.getText());
-                    //setVisible(false);
-                    dispose();
-                }
+            aclear = e -> note.setText(""),
+            aupdate = e -> {
+                saveNote(note.getText());
+                //setVisible(false);
+                dispose();
             },
-            areload = new ActionListener() {
-                public void actionPerformed(ActionEvent e) {
-                    refreshNote();
-                }
-            };
+            areload = e -> refreshNote();
 
-    private void loadNote(int id) {
-        notes = engine.getNote(id);
-    }
-
-    private void saveNote(int id, String data) {
+    private void saveNote(final String data) {
         if (data != null) {
             try {
-                engine.updateNote(id, data);
-
+                engine.updateNote(this.user_id, this.project_id, this.user_event_id, data);
             } catch (Exception e) {
-                Job.logger.log(Level.SEVERE, "{Note}", e);
+                logger.log(Level.SEVERE, "{Note}", e);
             }
         }
     }
@@ -69,24 +57,21 @@ public class Note extends JFrame {
     private void refreshNote() {
 
         try {
-            loadNote(user_event_id);
-            note.setText(notes);
+            note.setText(engine.getNote(user_event_id));
         } catch (Exception e3) {
-            Job.logger.log(Level.SEVERE, "{Note}", e3);
+            logger.log(Level.SEVERE, "{Note}", e3);
         }
 
     }
 
-    public Note(int id) {
+    public Note(String user_id, String project_id, int id) {
 
-        user_event_id = id;
+        this.user_id = user_id;
+        this.project_id = project_id;
+        this.user_event_id = id;
         cp = getContentPane();
 
         cp.setLayout(new GridLayout(2, 1));
-
-//		title.setLayout(new FlowLayout(FlowLayout.CENTER));
-//		title.add(new JLabel("Update notes"));
-//		row1.add(title);
 
         final JPanel buttonsEntry = new JPanel();
         buttonsEntry.setLayout(new FlowLayout(FlowLayout.CENTER));
@@ -109,9 +94,7 @@ public class Note extends JFrame {
         jbreload.addActionListener(areload);
 
 
-        Job.logger.log(Level.FINE, "Loading notes for user event id " + user_event_id);
-        loadNote(user_event_id);
-        note.setText(notes);
-
+        logger.log(Level.FINE, "Loading notes for user event id " + user_event_id);
+        note.setText(engine.getNote(user_event_id));
     }
 }

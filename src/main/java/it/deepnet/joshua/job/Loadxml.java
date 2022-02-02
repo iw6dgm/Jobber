@@ -1,11 +1,11 @@
 package it.deepnet.joshua.job;
 
 import java.io.FileInputStream;
+import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.util.HashMap;
-import java.util.Hashtable;
 import java.util.Map;
 import java.util.Properties;
-import java.util.logging.Level;
 
 public class Loadxml {
     private static Map<String, String> configuration = null;
@@ -72,18 +72,15 @@ public class Loadxml {
                 configuration.put("encrypt", prop.getProperty("encrypt"));
             } else configuration.put("encrypt", "false");
 
-        } catch (Exception e) {
-            Job.logger.log(Level.SEVERE, "{Loadxml}", e);
+        } catch (IOException e) {
+            throw new UncheckedIOException(e);
         }
     }
 
     public static String getValue(String key) {
 
-        String value = null;
-        value = configuration.get(key);
+        String value = configuration.get(key);
         if (value == null) value = "";
-        //System.out.println(key + " is " + value);
-
         return value;
 
     }
