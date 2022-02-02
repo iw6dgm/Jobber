@@ -4,11 +4,14 @@ import javax.swing.*;
 import java.awt.*;
 import java.awt.event.ActionListener;
 import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /**
  * @author Mcamangi
  */
 public class Note extends JFrame {
+
+    private static final Logger logger = Logger.getLogger(Note.class.getSimpleName());
 
     static final long serialVersionUID = 0L;
 
@@ -46,7 +49,7 @@ public class Note extends JFrame {
             try {
                 engine.updateNote(this.user_id, this.project_id, this.user_event_id, data);
             } catch (Exception e) {
-                Job.logger.log(Level.SEVERE, "{Note}", e);
+                logger.log(Level.SEVERE, "{Note}", e);
             }
         }
     }
@@ -56,7 +59,7 @@ public class Note extends JFrame {
         try {
             note.setText(engine.getNote(user_event_id));
         } catch (Exception e3) {
-            Job.logger.log(Level.SEVERE, "{Note}", e3);
+            logger.log(Level.SEVERE, "{Note}", e3);
         }
 
     }
@@ -91,7 +94,7 @@ public class Note extends JFrame {
         jbreload.addActionListener(areload);
 
 
-        Job.logger.log(Level.FINE, "Loading notes for user event id " + user_event_id);
+        logger.log(Level.FINE, "Loading notes for user event id " + user_event_id);
         note.setText(engine.getNote(user_event_id));
     }
 }
