@@ -1,10 +1,8 @@
 package it.deepnet.joshua.job;
 
-import java.io.IOException;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
-import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.List;
@@ -45,7 +43,7 @@ public class Engine {
                     return rs.next();
                 }
             }
-        } catch (SQLException | IOException e) {
+        } catch (Exception e) {
             logger.log(Level.SEVERE, "{Engine}", e);
         }
         return logged;
@@ -138,9 +136,6 @@ public class Engine {
     }
 
     public int startProject(String user_id, String project_id) {
-
-        logger.log(Level.FINE, "call startProject('" + user_id +
-                "'," + project_id + ")");
 
         try (final Connection c = Database.open(false)) {
             try (final PreparedStatement ps = c.prepareStatement("INSERT INTO event_store(user_id,project_id,event_type) VALUES(?,?,?)", Statement.RETURN_GENERATED_KEYS)) {
