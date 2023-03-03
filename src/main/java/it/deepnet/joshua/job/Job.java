@@ -4,8 +4,6 @@
  */
 package it.deepnet.joshua.job;
 
-import sun.misc.BASE64Decoder;
-
 import javax.swing.*;
 import java.awt.*;
 import java.awt.event.ActionEvent;
@@ -31,7 +29,7 @@ public class Job extends JFrame {
     static String user_id = "user";
     static String user_pwd = "tester";
     List<Project> projects;
-    private final static  JPanel title = new JPanel(),
+    private final static JPanel title = new JPanel(),
             row1 = new JPanel(),
             row2 = new JPanel(),
             row3 = new JPanel(),
@@ -228,14 +226,8 @@ public class Job extends JFrame {
 
         logger.log(Level.CONFIG, "Username = " + user_id);
 
-        if (Loadxml.getValue("password") != null) {
-            user_pwd = Loadxml.getValue("password");
-            if ("true".equals(Loadxml.getValue("encrypt"))) {
-                BASE64Decoder base64Decoder = new BASE64Decoder();
-                user_pwd = new String(base64Decoder.decodeBuffer(new String(base64Decoder.decodeBuffer(user_pwd))));
-            }
-            password.setText(user_pwd);
-        }
+        user_pwd = Loadxml.getValue("password");
+        password.setText(user_pwd);
 
         logger.log(Level.CONFIG, "Password = " + user_pwd);
 
