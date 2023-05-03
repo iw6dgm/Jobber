@@ -17,7 +17,7 @@ public class Job extends JFrame {
 
     private static final Logger logger = Logger.getLogger(Job.class.getName());
     private static final long serialVersionUID = 1L;
-    private static final String VERSION = "0.9.0 \t(C) Maurizio Camangi";
+    private static final String VERSION = "0.9.1 \t(C) Maurizio Camangi";
     private Container cp;
     private Status usr_status = null;
     private Project usr_prj = null;
