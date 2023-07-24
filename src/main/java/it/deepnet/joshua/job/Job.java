@@ -16,8 +16,9 @@ import java.util.logging.Logger;
 public class Job extends JFrame {
 
     private static final Logger logger = Logger.getLogger(Job.class.getName());
-    private static final long serialVersionUID = 1L;
-    private static final String VERSION = "0.9.1 \t(C) Maurizio Camangi";
+    private static final String VERSION = "0.9.2 \t(C) Maurizio Camangi";
+
+    public static String HOME;
     private Container cp;
     private Status usr_status = null;
     private Project usr_prj = null;
@@ -190,7 +191,6 @@ public class Job extends JFrame {
 
         status.setWrapStyleWord(true);
         status.setLineWrap(true);
-        status.append("Server is " + engine.getServer() + "\n");
 
         if ((user_id + user_pwd).length() > 0) {
             doLogin();
@@ -199,15 +199,11 @@ public class Job extends JFrame {
 
     public static void main(final String[] args) throws IOException {
 
-        //Job.logger.setLevel(Level.INFO);
+        String os = System.getenv("OS");
+        if (os != null && os.contains("Windows")) HOME = System.getenv("HOMEPATH");
+        else HOME = System.getenv("HOME");
 
         Loadxml.init();
-
-        if (Loadxml.getValue("server") != null) {
-            Database.server = Loadxml.getValue("server").trim();
-        } else {
-            Database.server = "localhost";
-        }
 
         logger.log(Level.CONFIG, "Database = " + Database.server);
 
@@ -239,7 +235,7 @@ public class Job extends JFrame {
 
     private void doLogin() {
         if (user_id.length() > 0) {
-            status.append(user_id + " login in progress...\n");
+            status.append("User " + user_id + " login in progress...\n");
             logged = engine.login(user_id, user_pwd);
             if (logged) {
                 status.append("Successful login!\n");

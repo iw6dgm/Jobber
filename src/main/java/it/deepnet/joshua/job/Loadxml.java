@@ -11,11 +11,7 @@ public class Loadxml {
     private static Map<String, String> configuration = null;
 
     public static void init() {
-        String os = System.getenv("OS");
-        String home;
-        if (os != null && os.contains("Windows")) home = System.getenv("HOMEPATH");
-        else home = System.getenv("HOME");
-        String paramfile = home + "/.job/jobconf.xml";
+        String paramfile = Job.HOME + "/.job/jobconf.xml";
         //BasicConfigurator.configure();
 
         configuration = new HashMap<>();

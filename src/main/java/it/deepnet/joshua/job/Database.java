@@ -12,14 +12,15 @@ public class Database {
     
     private static final Logger logger = Logger.getLogger(Database.class.getSimpleName());
 
-    public static String server = "%s/db";
+    public final static String server = "%s/db";
     public static String dbname = "jobber.db";
 
     static Connection open(final boolean autocommit) throws Exception {
         Connection c = null;
         SQLiteJDBCLoader.initialize();
-        SQLiteDataSource dataSource = new SQLiteDataSource();
-        dataSource.setUrl("jdbc:sqlite:" + String.format(server, System.getProperty("user.home")) + "/" + dbname);
+        final SQLiteDataSource dataSource = new SQLiteDataSource();
+        final String dbname = String.format(server, Job.HOME) + "/" + Database.dbname;
+        dataSource.setUrl("jdbc:sqlite:" + dbname);
         try {
             c = dataSource.getConnection();
             c.setAutoCommit(autocommit);

@@ -23,11 +23,7 @@ public class Engine {
         return this.server;
     }
 
-    public Engine() {
-
-        setServer(Database.server);
-
-    }
+    public Engine() {}
 
     public boolean login(String user, String password) {
 
